@@ -73,7 +73,11 @@ def selftest():
         shutil.copy(tokens, os.path.join(t, "design-tokens.css"))
         good = os.path.join(t, "good.html"); shutil.copy(starter, good)
         rep = report(binary, good)
-        cond = rep and rep["passed"] == rep["cases"] and rep["cases"] >= 9
+        # every check in commit() has a case of its own (only_check), so a battery that lost one is caught — a bare
+        # count of nine or more (the first version) would not notice the issued-approval cases going missing
+        need = {"reuse", "words", "kind", "actor", "issued", "request", "revision"}
+        have = {r.get("only_check") for r in (rep or {}).get("rows", [])}
+        cond = rep and rep["passed"] == rep["cases"] and need <= have
         ok.append(bool(cond)); print(f"  {'PASS' if cond else 'FAIL'}  the starter's guard passes its own battery ({rep and rep['passed']}/{rep and rep['cases']})")
         # the bug an audit found: compare the approval with the request's draft, not with what goes out
         src = open(starter, encoding="utf-8").read()

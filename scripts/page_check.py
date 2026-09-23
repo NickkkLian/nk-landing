@@ -14,8 +14,9 @@ The rules, and the invariant each one serves (references/invariants.md):
   L04  a page that says it is a demo uses a reserved 555-01xx number and an example.* e-mail            (—)
   L05  every write to the outbox happens inside the guard, the guard takes an approval, and each outbox
        row records the approval it came from                                                             (1)
-  L06  the guard compares the actor, the request, the revision, the words actually going out and the kind
-       of action, refuses reuse — and the page carries its own ?probe=1 battery that exercises them      (1–4)
+  L06  the guard compares the actor, that the desk issued this very approval, the request, the revision, the
+       words actually going out and the kind of action, refuses reuse — and the page carries its own
+       ?probe=1 battery that exercises them                                                              (1–4)
   L07  the customer form has no control that approves; the approve buttons live in the staff view        (4)
   L08  every input has a label, the status regions announce, and focus is never removed silently        (—)
   L09  nothing is fetched from the network except the fonts the token file names                        (—)
@@ -37,6 +38,9 @@ SOCIAL = re.compile(r"(?i)★|✩|⭐|\b\d(?:\.\d)?\s*/\s*5\b|\btrusted by\b|\bt
 # was approved" while the code compares the approval with the request's draft instead of with what goes out — the
 # bug an audit found on 2026-09-22. These patterns follow the template's guard; ?probe=1 is the behavioural test.
 REFUSALS = [("the actor", r"actor\s*!==\s*.staff."),
+            # the same object the desk issued, not merely an id the desk has seen: a copy under a real id with other
+            # words passes an id-only check (0.1.1)
+            ("that the desk issued this very approval", r"issued\[approval\.id\]\s*!==\s*approval\b"),
             ("the request the approval belongs to", r"approval\.requestId\s*!==\s*r\.id"),
             ("the revision", r"approval\.rev\s*!==\s*r\.rev"),
             ("the words actually going out", r"action\.text\s*!=="),
@@ -138,6 +142,9 @@ def check(path, public=False):
         for name, pattern in REFUSALS:
             if not re.search(pattern, inside):
                 add("L06", f"the guard never checks {name}")
+        # the record the desk keeps must have no prototype, or "constructor" and "toString" are already in it
+        if re.search(r"issued\s*:", js) and not re.search(r"issued\s*:\s*(?:Object\.create\(\s*null\s*\)|new\s+Map\b)", js):
+            add("L06", "the desk's record of issued approvals is a plain object: inherited names like 'constructor' read as issued")
         if not (re.search(r"probe=1", js) and "guard-probe" in js):
             add("L06", "no ?probe=1 battery: nothing in the page exercises the guard against the cases it exists for")
 
@@ -204,11 +211,12 @@ def minimal(**over):
 <script type="application/json" id="business">__BIZ__</script>
 <script>
 var BIZ = JSON.parse(document.getElementById("business").textContent);
-var state = { outbox: [], spent: {} };
+var state = { outbox: [], spent: {}, issued: Object.create(null) };
 var KINDS = { message: 1, calendar: 1 };
 function commit(action, approval) {
   var r = state.requests[0];
   if (!approval || approval.actor !== "staff") return refuse("approvals come from the staff desk, not from the form");
+  if (state.issued[approval.id] !== approval) return refuse("the staff desk did not issue this approval");
   if (!KINDS.hasOwnProperty(action.kind)) return refuse("an approval covers two kinds of action");
   if (approval.requestId !== r.id) return refuse("another request's approval");
   if (approval.rev !== r.rev) return refuse("the request changed after it was approved");
@@ -239,8 +247,9 @@ def selftest():
         ("L03 star rating", {"sub": [("<footer>", "<p>Rated 5/5 by our customers</p><footer>")]}, {"L03"}),
         # the two values below have to trip this rule and must still be safe to publish inside a checker that
         # anyone can read: 020 7946 0123 is in the UK range reserved for fiction, and .test is a top-level domain
-        # reserved so that it never resolves (RFC 2606). Neither can reach a person; both are outside what this
-        # page's rule allows, which is the point — L04 is this page's convention, not a guess at what is real.
+        # reserved for testing; it never resolves in public DNS (RFC 2606). Neither can reach a person; both are
+        # outside what this page's rule allows, which is the point — L04 is this page's convention, not a guess at
+        # what is real.
         # (An earlier sample used parcel-example.com, which an audit found is simply unregistered — anyone could buy it.)
         ("L04 a number outside the reserved range", {"sub": [("555-0142", "020 7946 0123")]}, {"L04"}),
         ("L04 an e-mail outside the example domains", {"sub": [("hello@ash.example", "hello@parcel.test")]}, {"L04"}),
@@ -250,6 +259,9 @@ def selftest():
         ("L05 a guard that takes no approval", {"sub": [("function commit(action, approval) {", "function commit(action, grant) {\n  var approval = grant;")]}, {"L05"}),
         ("L05 nothing ever reaches the outbox", {"sub": [('  state.outbox.push({ text: action.text, approval: approval.id, note: "not sent" });', '  // rows would say not sent')]}, {"L05"}),
         ("L06 no actor check", {"sub": [('if (!approval || approval.actor !== "staff") return refuse("approvals come from the staff desk, not from the form");', 'if (!approval) return refuse("no approval");')]}, {"L06"}),
+        ("L06 no check that the desk issued the approval", {"sub": [('  if (state.issued[approval.id] !== approval) return refuse("the staff desk did not issue this approval");\n', "")]}, {"L06"}),
+        ("L06 the record of issued approvals is a plain object", {"sub": [("issued: Object.create(null)", "issued: {}")]}, {"L06"}),
+        ("L06 checks only that the id was issued", {"sub": [("if (state.issued[approval.id] !== approval)", "if (!state.issued[approval.id])")]}, {"L06"}),
         ("L06 no revision check", {"sub": [('  if (approval.rev !== r.rev) return refuse("the request changed after it was approved");\n', "")]}, {"L06"}),
         ("L06 no reuse check", {"sub": [('  if (state.spent[approval.id]) return refuse("already used");\n', ""), ("state.spent[approval.id] = true;", "")]}, {"L06"}),
         ("L06 compares the draft, not what goes out (the audited bug)", {"sub": [("if (action.text !== approval.message)", "if (approval.message !== draftFor(r))")]}, {"L06"}),

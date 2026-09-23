@@ -5,7 +5,7 @@ license: MIT
 compatibility: standard library only, no packages and no build step; the page it writes has no dependencies and fetches nothing when it opens. probe_check.py needs Google Chrome or Chromium; without one, open the page with ?probe=1 in any browser.
 metadata:
   provenance: own practice (2026-09) — an offline booking-desk template with a staff-approval guard, and a design system built for pages whose numbers can be checked; see Provenance
-  version: 0.1.0
+  version: 0.1.1
 ---
 # Landing page with a booking door
 
@@ -42,15 +42,17 @@ carefully: nothing leaves it until a person approves the exact words that are ab
 5. **Check it**: `python3 ${CLAUDE_SKILL_DIR}/scripts/page_check.py page.html --single --public`
    (L01 the description is read, not hard-coded · L02 demo mode is on the screen and the outbox says "not
    sent" · L03 no testimonials, ratings or logos · L04 reserved numbers and example domains · L05 every write
-   to the outbox goes through the guard · L06 the guard refuses all four ways · L07 nothing on the form
-   approves · L08 labels, a live region, focus left alone · L09 nothing fetched at load · L10 colours from the
-   token file · L11 one file · L12 a footer that says what is made up).
+   to the outbox goes through the guard · L06 the guard compares each approval with what goes out and accepts
+   only ones the desk issued · L07 nothing on the form approves · L08 labels, a live region, focus left alone ·
+   L09 nothing fetched at load · L10 colours from the token file · L11 one file · L12 a footer that says what is
+   made up).
 6. **Try the guard.** `python3 ${CLAUDE_SKILL_DIR}/scripts/probe_check.py page.html` opens the page in Chrome with
-   `?probe=1`: the page tries nine things against its own guard — the two approved actions, and seven that must
+   `?probe=1`: the page tries eleven things against its own guard — the two approved actions, and nine that must
    be refused (the same message twice, other words or another slot under a real approval, a reminder the approval
-   never covered, an approval from the customer side, another request's approval, a phone number changed after
-   approval) — and the script reads the table. Without Chrome, open `page.html?probe=1` in any browser and read it.
-   page_check.py can see that the guard compares the right things; only this shows that the comparisons work.
+   never covered, an approval from the customer side, a built-in object dressed as an approval, an approval the
+   desk did not issue, another request's approval, a phone number changed after approval) — and the script reads the table. Without Chrome, open
+   `page.html?probe=1` in any browser and read it. page_check.py can see that the guard compares the right
+   things; only this shows that the comparisons work.
 7. **Open it and book something.** Pick a slot, send the request, watch it sit in the staff desk, approve it,
    and read the outbox. Then press the three buttons under "Try the guard". A page where those three do nothing
    visible is not finished.
@@ -74,8 +76,10 @@ carefully: nothing leaves it until a person approves the exact words that are ab
 - **It does not send anything, and it has no backend.** Demo mode is the only mode the skill ships. Wiring it
   to a real messenger, calendar or database is a person's job, on their own infrastructure.
 - **The guard is a demonstration of a rule, not a security control.** It runs in the visitor's own browser,
-  where anything can be edited. What it is for is to make the rule visible and to define what the real system
-  must enforce on its side.
+  where anything can be edited: whoever can change the page or inject a script into it can get past every check
+  it makes. So "a forged approval is refused" (invariant 4) holds for the page as shipped — approvals made through
+  it and its own code — not against someone who rewrites the page. What the guard is for is to make the rule
+  visible and to define what the real system must enforce on its side.
 - **It does not design a brand.** One token file, one layout. If you want a different look, change the tokens.
 - **It cannot tell whether the description is true.** Hours, prices and the promise that somebody reads the
   desk are the owner's to keep.

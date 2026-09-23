@@ -227,14 +227,16 @@
   });
 
   /* ---------------------------------------------------------------- the door */
-  var state = { picked: null, requests: [], approvals: [], outbox: [], spent: {}, reqSeq: 0, apprSeq: 0 };
+  /* issued has no prototype: on a plain {} the names every object inherits ("constructor", "toString") are already
+     there, and the built-in object behind one of them passed as an approval the desk had issued (audit, 2026-09-22) */
+  var state = { picked: null, requests: [], approvals: [], issued: Object.create(null), outbox: [], spent: {}, reqSeq: 0, apprSeq: 0 };
 
   function draftFor(r) {
     return "Hi " + r.name + " — " + BIZ.name + " here. We have you down for " + r.service + " on " + r.slot +
            ". Reply to this message if that no longer works." + (r.note ? "\nYour note: " + r.note : "");
   }
 
-  /* The guard. Every outbound action passes through it, and it refuses in four ways, out loud. */
+  /* The guard. Every outbound action passes through it, and every refusal says why, out loud. */
   /* An approval covers exactly two things for one request: the confirmation message whose words it names, and the
      calendar entry for the slot it names. Anything else — a reminder, a second message — needs its own approval.
      2026-09-22: an audit sent unapproved words through an earlier version of this function by reusing a real
@@ -245,6 +247,9 @@
     var r = state.requests.filter(function (x) { return x.id === action.requestId; })[0];
     if (!r) return refuse("no such request");
     if (!approval || approval.actor !== "staff") return refuse("approvals come from the staff desk, not from the form");
+    /* the very approval the desk issued — the same object, not one with the same fields or the same id. Before
+       0.1.1 a made-up {actor: "staff", …} with the right fields went through (audit, 2026-09-22). */
+    if (state.issued[approval.id] !== approval) return refuse("the staff desk did not issue this approval");
     if (!KINDS.hasOwnProperty(action.kind)) return refuse("an approval covers the confirmation and the calendar entry, nothing else (" + action.kind + ")");
     if (approval.requestId !== r.id) return refuse("that approval belongs to another request (" + approval.requestId + ")");
     /* the revision first, so a request that changed after approval says that rather than "already used" */
@@ -297,6 +302,7 @@
   function approve(r) {
     var approval = { id: "a" + (++state.apprSeq), actor: "staff", requestId: r.id, rev: r.rev, message: draftFor(r), slot: r.slot };
     state.approvals.push(approval);
+    state.issued[approval.id] = approval;   // the desk's own record of what it issued
     var sent = commit({ requestId: r.id, kind: "message", text: draftFor(r) }, approval);
     if (!sent) { render(); return; }
     commit({ requestId: r.id, kind: "calendar", text: r.slot }, approval);   // the same approval, not a second one
@@ -374,7 +380,9 @@
       var r = { id: "probe-r" + (++n), rev: 1, name: "Probe", contact: "555-0100", service: BIZ.services[0].name,
                 slot: BIZ.slots[0], note: "", status: "awaiting_staff" };
       state.requests.push(r);
-      return [r, { id: "probe-a" + n, actor: "staff", requestId: r.id, rev: 1, message: draftFor(r), slot: r.slot }];
+      var a = { id: "probe-a" + n, actor: "staff", requestId: r.id, rev: 1, message: draftFor(r), slot: r.slot };
+      state.issued[a.id] = a;   // issued, as the desk would
+      return [r, a];
     }
     function msg(r) { return { requestId: r.id, kind: "message", text: draftFor(r) }; }
     var cases = [
@@ -385,6 +393,15 @@
       ["another slot under a real approval", false, "words", function () { var x = fresh(); return commit({ requestId: x[0].id, kind: "calendar", text: BIZ.slots[1] }, x[1]); }],
       ["a reminder under a real approval", false, "kind", function () { var x = fresh(); return commit({ requestId: x[0].id, kind: "reminder", text: x[0].slot }, x[1]); }],
       ["an approval made on the customer side", false, "actor", function () { var x = fresh(); x[1].actor = "customer"; return commit(msg(x[0]), x[1]); }],
+      /* a built-in object dressed as an approval under the name it is inherited by: a record with a prototype lists it */
+      ["an approval named after a built-in", false, "issued", function () {
+        var x = fresh(), fake = Object.prototype.hasOwnProperty, keys = ["id", "actor", "requestId", "rev", "message", "slot"];
+        var vals = ["hasOwnProperty", "staff", x[0].id, 1, draftFor(x[0]), x[0].slot];
+        keys.forEach(function (k, i) { fake[k] = vals[i]; });
+        try { return commit(msg(x[0]), fake); } finally { keys.forEach(function (k) { delete fake[k]; }); }
+      }],
+      /* a copy of a real approval, same id, other words: checking only that the id was issued would let it through */
+      ["an approval the desk did not issue", false, "issued", function () { var x = fresh(); var copy = JSON.parse(JSON.stringify(x[1])); copy.message = "Words nobody approved."; return commit({ requestId: x[0].id, kind: "message", text: copy.message }, copy); }],
       ["another request's approval", false, "request", function () { var x = fresh(); x[1].requestId = "somebody-else"; return commit(msg(x[0]), x[1]); }],
       ["the phone number changed after approval", false, "revision", function () { var x = fresh(); x[0].contact = "555-0199"; x[0].rev = 2; return commit(msg(x[0]), x[1]); }]
     ];
@@ -398,6 +415,8 @@
     document.body.appendChild(pre);
     state.requests = state.requests.filter(function (x) { return x.id.indexOf("probe-") !== 0; });
     state.outbox = state.outbox.filter(function (x) { return x.requestId.indexOf("probe-") !== 0; });
+    Object.keys(state.issued).forEach(function (k) { if (k.indexOf("probe-") === 0) delete state.issued[k]; });
+    Object.keys(state.spent).forEach(function (k) { if (k.indexOf("probe-") === 0) delete state.spent[k]; });
     render();
   }
 })();
