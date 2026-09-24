@@ -4,8 +4,8 @@
 
 An agent skill for [Claude Code](https://code.claude.com) and [OpenAI Codex](https://developers.openai.com/codex). Turn a written description of a small business — hours, services, price ranges, the questions customers actually ask — into one self-contained HTML page with a booking door, where every confirmation and every calendar write waits for a member of staff to approve that exact draft.
 
-Part of [nickkk-skills](https://github.com/NickkkLian/nickkk-skills) — agent skills whose scripts were broken on purpose
-before release to prove their checks react.
+Part of [nickkk-skills](https://github.com/NickkkLian/nickkk-skills) — agent skills that ship a self-test with every script; the Verify
+section below says which of them were broken on purpose before release to prove they react.
 
 ![nk-landing demo: one idea in, a finished page out](https://raw.githubusercontent.com/NickkkLian/nickkk-skills/main/gallery/nk-landing.gif)
 
@@ -30,6 +30,14 @@ The full procedure, the boundaries and where the rules came from are in [SKILL.m
 5. Check it
 6. Try the guard
 7. Open it and book something
+
+## Why it is built this way
+
+**The idea.** A booking is a promise, and a promise that goes out without anyone reading it is how a small shop ends up double-booked or apologising to somebody it never meant to write to.
+
+**Where it came from.** The approval semantics — an approval carries the revision and the text it approved, it works once, and the customer's side cannot produce one — come from an offline booking-desk template of mine that replays 22 scenarios and refuses three attacks; this skill keeps the semantics and none of the code.
+
+**Evidence.** What was broken on purpose to show that the self-tests can fail is under [Verify](#verify); what was run end to end, and in which agent, is under [Compatibility](#compatibility).
 
 ## Install
 
@@ -96,8 +104,8 @@ git clone https://github.com/NickkkLian/nk-landing.git ~/.agents/skills/nk-landi
 
 | Agent | Tested | What was checked |
 |---|---|---|
-| Claude Code (CLI 2.1.173, macOS) | yes | In a fresh project with an isolated Claude config, inside a macOS sandbox that blocked reading the tester's ~/.claude folder (settings, session history, memory), Desktop, Documents and Downloads, SSH keys and git identity, a plain request that never names the skill triggered it and it ran its bundled script. The route 2 plugin commands were also run from a shell with an isolated config: marketplace add, install, list. The brief was a paragraph about a two-person upholstery workshop and never named the skill. The run loaded it, took the example description with `--init`, rewrote it from the brief, built the page and checked it — eight turns. It used a number in the reserved 555-01xx range, as SKILL.md step 2 asks, and where the brief gave no street address it wrote “full address when you book” rather than inventing one. This run used an earlier version of the skill; afterwards an audit found that the booking guard compared an approval with the request's current draft instead of with the words actually going out. The guard was fixed; the page this run wrote carries the old guard and now reports it (L05/L06), and the same description rebuilt with the current skill (0.1.1) reports 0 findings and passes the page's own eleven-case guard probe. |
-| OpenAI Codex CLI (0.155.0-alpha.9.2, gpt-5.6-sol, low reasoning, macOS) | yes | Copied into `~/.agents/skills` of a temporary home, in a fresh project, without the user's Codex config. From the same brief, Codex read SKILL.md and the generator's source, took the example description, rewrote it and built the page, then searched the output for commit(), approve and refuse and read that part of the page before it reported. Like the Claude run, it ran before the guard fix described above: its page carries the old guard and now reports it, and its own description rebuilt with the current skill (0.1.1) reports 0 findings and passes the eleven-case guard probe. |
+| Claude Code (CLI 2.1.173, macOS) | yes | In a fresh project with an isolated Claude config, inside a macOS sandbox that blocked reading the tester's ~/.claude folder (settings, session history, memory), Desktop, Documents and Downloads, SSH keys and git identity, a plain request that never names the skill triggered it and it ran its bundled script. The route 2 plugin commands were also run from a shell with an isolated config: marketplace add, install, list. The brief was a paragraph about a two-person upholstery workshop and never named the skill. The run loaded it, took the example description with `--init`, rewrote it from the brief, built the page and checked it — eight turns. It used a number in the reserved 555-01xx range, as SKILL.md step 2 asks, and where the brief gave no street address it wrote “full address when you book” rather than inventing one. This run used an earlier version of the skill; afterwards an audit found that the booking guard compared an approval with the request's current draft instead of with the words actually going out. The guard was fixed; the page this run wrote carries the old guard and now reports it (L05/L06), and the same description rebuilt with version 0.1.1 reports 0 findings and passes the page's own eleven-case guard probe. |
+| OpenAI Codex CLI (0.155.0-alpha.9.2, gpt-5.6-sol, low reasoning, macOS) | yes | Copied into `~/.agents/skills` of a temporary home, in a fresh project, without the user's Codex config. From the same brief, Codex read SKILL.md and the generator's source, took the example description, rewrote it and built the page, then searched the output for commit(), approve and refuse and read that part of the page before it reported. Like the Claude run, it ran before the guard fix described above: its page carries the old guard and now reports it, and its own description rebuilt with version 0.1.1 reports 0 findings and passes the eleven-case guard probe. |
 | Cursor, Gemini CLI | no | Not tested. Their documentation says both read `~/.agents/skills`, the folder route 4 clones into; Gemini CLI asks before it activates a skill. |
 
 Route 4 was checked for this repository: cloned from GitHub into a temporary home's `~/.agents/skills`, it was listed by the step 3 command. This skill's frontmatter uses only name, description, license, compatibility and metadata.

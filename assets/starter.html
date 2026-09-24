@@ -228,7 +228,7 @@
 
   /* ---------------------------------------------------------------- the door */
   /* issued has no prototype: on a plain {} the names every object inherits ("constructor", "toString") are already
-     there, and the built-in object behind one of them passed as an approval the desk had issued (audit, 2026-09-22) */
+     there, and the built-in object behind one of them passed as an approval the desk had issued */
   var state = { picked: null, requests: [], approvals: [], issued: Object.create(null), outbox: [], spent: {}, reqSeq: 0, apprSeq: 0 };
 
   function draftFor(r) {
@@ -239,16 +239,16 @@
   /* The guard. Every outbound action passes through it, and every refusal says why, out loud. */
   /* An approval covers exactly two things for one request: the confirmation message whose words it names, and the
      calendar entry for the slot it names. Anything else — a reminder, a second message — needs its own approval.
-     2026-09-22: an audit sent unapproved words through an earlier version of this function by reusing a real
-     approval with a new kind and new text; it compared the approval with the request's current draft instead of
-     with what was about to go out. Every check below compares against the action itself. */
+     An earlier version of this function let unapproved words through when a real approval was reused with a new
+     kind and new text: it compared the approval with the request's current draft instead of with what was about
+     to go out. Every check below compares against the action itself. */
   var KINDS = { message: "message", calendar: "calendar" };
   function commit(action, approval) {
     var r = state.requests.filter(function (x) { return x.id === action.requestId; })[0];
     if (!r) return refuse("no such request");
     if (!approval || approval.actor !== "staff") return refuse("approvals come from the staff desk, not from the form");
     /* the very approval the desk issued — the same object, not one with the same fields or the same id. Before
-       0.1.1 a made-up {actor: "staff", …} with the right fields went through (audit, 2026-09-22). */
+       0.1.1 a made-up {actor: "staff", …} with the right fields went through. */
     if (state.issued[approval.id] !== approval) return refuse("the staff desk did not issue this approval");
     if (!KINDS.hasOwnProperty(action.kind)) return refuse("an approval covers the confirmation and the calendar entry, nothing else (" + action.kind + ")");
     if (approval.requestId !== r.id) return refuse("that approval belongs to another request (" + approval.requestId + ")");

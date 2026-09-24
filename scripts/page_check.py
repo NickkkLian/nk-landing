@@ -35,8 +35,8 @@ MAIL_ANY = re.compile(r"[\w.+-]+@[\w-]+\.[\w.]+")
 MAIL_OK = re.compile(r"@(?:example\.(?:com|org|net)|[\w-]+\.example)\b")
 SOCIAL = re.compile(r"(?i)★|✩|⭐|\b\d(?:\.\d)?\s*/\s*5\b|\btrusted by\b|\btestimonial|\bratings?\b|\breviews?\b|\b\d[\d,]*\+? (?:happy )?(?:customers|clients)\b")
 # What the guard compares, read from its code rather than from its messages: a message can say "not the text that
-# was approved" while the code compares the approval with the request's draft instead of with what goes out — the
-# bug an audit found on 2026-09-22. These patterns follow the template's guard; ?probe=1 is the behavioural test.
+# was approved" while the code compares the approval with the request's draft instead of with what goes out — an
+# earlier version's bug. These patterns follow the template's guard; ?probe=1 is the behavioural test.
 REFUSALS = [("the actor", r"actor\s*!==\s*.staff."),
             # the same object the desk issued, not merely an id the desk has seen: a copy under a real id with other
             # words passes an id-only check (0.1.1)
@@ -264,7 +264,7 @@ def selftest():
         ("L06 checks only that the id was issued", {"sub": [("if (state.issued[approval.id] !== approval)", "if (!state.issued[approval.id])")]}, {"L06"}),
         ("L06 no revision check", {"sub": [('  if (approval.rev !== r.rev) return refuse("the request changed after it was approved");\n', "")]}, {"L06"}),
         ("L06 no reuse check", {"sub": [('  if (state.spent[approval.id]) return refuse("already used");\n', ""), ("state.spent[approval.id] = true;", "")]}, {"L06"}),
-        ("L06 compares the draft, not what goes out (the audited bug)", {"sub": [("if (action.text !== approval.message)", "if (approval.message !== draftFor(r))")]}, {"L06"}),
+        ("L06 compares the draft, not what goes out (an earlier version's bug)", {"sub": [("if (action.text !== approval.message)", "if (approval.message !== draftFor(r))")]}, {"L06"}),
         ("L06 any kind of action goes", {"sub": [('  if (!KINDS.hasOwnProperty(action.kind)) return refuse("an approval covers two kinds of action");\n', "")]}, {"L06"}),
         ("L06 another request's approval goes", {"sub": [('  if (approval.requestId !== r.id) return refuse("another request\'s approval");\n', "")]}, {"L06"}),
         ("L06 no probe battery", {"sub": [('if (/[?&]probe=1/.test(location.search)) { document.body.appendChild(Object.assign(document.createElement("pre"), { id: "guard-probe" })); }\n', "")]}, {"L06"}),
