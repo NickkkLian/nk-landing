@@ -12,6 +12,7 @@ before release to prove their checks react.
 - Five invariants: nothing leaves without an approval, and an approval covers only what it names; an approval names the request, the revision, the words and the slot, and what goes out is compared with those; an approval works once; the visitor's side cannot approve; a page with no backend says so on the screen and its outbox says what would have been sent and to whom.
 - `assets/starter.html`, a working page — services, hours, prices, the questions people actually ask, a slot picker, a staff desk where drafts wait, an outbox, and three buttons that try the guard on purpose — plus `assets/design-tokens.css`, the token file it shares with the other pages in this family.
 - `scripts/make_page.py`: a JSON description becomes one file, tokens inlined, nothing fetched at load. While the description says `demo`, it refuses a phone number outside the reserved 555-01xx range and any e-mail that is not at an example domain.
+- The page carries its own type: the Latin subsets of Fraunces, Inter and Space Mono (SIL OFL 1.1, licences in `assets/fonts/`) are inlined, which adds 135,972 bytes to every page. It still fetches nothing at load.
 - `scripts/page_check.py`: twelve rules on the file itself — the description is read rather than hard-coded, demo mode is on the screen, no testimonials or star ratings anywhere, every write to the outbox goes through the guard, the guard compares each approval with what goes out and accepts only ones the desk issued, nothing on the customer form approves, labels and a live region, nothing fetched at load, colours from the token file, one file, and a footer that says what is made up.
 - `scripts/probe_check.py`: opens the page in Chrome with `?probe=1` and reads the page's own eleven-case attack battery — the comparisons working, not just present. Without Chrome, open `page.html?probe=1` yourself.
 - Standard library only (probe_check.py also needs Chrome). The page it writes has no dependencies and no build step.
@@ -63,7 +64,7 @@ Without opening a session, the same two steps work from a shell: `claude plugin 
 
 <img src="https://raw.githubusercontent.com/NickkkLian/nickkk-skills/main/gallery/panel-route/panel-route.gif" alt="Adding the marketplace and installing a skill in the desktop app" width="640">
 
-<sub>The repository list in this recording shows the recorder's own repositories because a GitHub account is connected; yours will show yours. Type the full name as in step 4.</sub>
+<sub>Recorded on 2026-09-16, when the marketplace listed ten skills, all at version 0.1.0; it lists more now. The repository list in this recording shows the recorder's own repositories because a GitHub account is connected; yours will show yours. Type the full name as in step 4.</sub>
 
 1. In the chat box, type `/plugin marketplace` and press Enter (or open **Settings → Customize → Plugins**). The **Plugins** panel opens.
    <br><img src="https://raw.githubusercontent.com/NickkkLian/nickkk-skills/main/gallery/panel-route/step1-type-plugin-marketplace.png" alt="/plugin marketplace typed in the chat box" width="480">

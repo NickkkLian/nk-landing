@@ -7,22 +7,29 @@ open, e-mail or put on any static host. No build step, no packages, nothing fetc
     python3 make_page.py --selftest
 
 What it does, and nothing else: it reads the template, replaces the business data block with yours, and inlines
-the token file so the result is a single file. The booking flow, the staff desk and the approval guard come
-from the template unchanged — this script never writes behaviour, so a page it produces behaves exactly like
-the starter you can read.
+the token file and the three faces it names (assets/fonts: Fraunces, Inter, Space Mono, Latin subsets, SIL OFL
+1.1 — about 135 KB as base64) so the result is a single file that draws its own type. The booking flow, the
+staff desk and the approval guard come from the template unchanged — this script never writes behaviour, so a
+page it produces behaves exactly like the starter you can read.
 
 It refuses to write a page when the description is missing something a visitor would look for (name, services,
 slots), and — while `demo` is true — when it carries a phone number outside the reserved 555-01xx range or an
 e-mail at a domain that is not an example domain. A demo of a business that does not exist should not be able
 to ring a real telephone.
 """
-import json, os, re, sys
+import base64, json, os, re, sys
 
 sys.dont_write_bytecode = True   # the selftest imports page_check; a __pycache__ beside a shipped script is litter
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 TEMPLATE = os.path.join(HERE, "..", "assets", "starter.html")
 TOKENS = os.path.join(HERE, "..", "assets", "design-tokens.css")
+FONT_DIR = os.path.join(HERE, "..", "assets", "fonts")
+FONTS = [("Fraunces", "fraunces-latin-wght.woff2", "100 900"), ("Inter", "inter-latin-wght.woff2", "100 900"),
+         ("Space Mono", "space-mono-latin-400.woff2", "400")]
+FONT_NOTICE = ("/* Fraunces (c) 2020 The Fraunces Project Authors; Inter (c) 2016 The Inter Project Authors; Space Mono (c) 2016\n"
+               "   The Space Mono Project Authors. Latin subsets under the SIL Open Font License 1.1 (openfontlicense.org);\n"
+               "   the licence texts ship with the skill in assets/fonts/. Inlined so the file fetches nothing. */")
 REQUIRED = ("name", "tagline", "facts", "services", "faq", "slots")
 PHONE_OK = re.compile(r"\b555-01\d{2}\b")
 PHONE_ANY = re.compile(r"(?<![\d.\-/])(?:\+\d{1,3}[ -]?)?(?:\(\d{3}\)[ -]?|\d{3}[ -])?\d{3}[ -]\d{4}(?![\d.\-/])")
@@ -75,6 +82,16 @@ def esc(t):
     return str(t).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;")
 
 
+def font_faces(font_dir=FONT_DIR):
+    """@font-face rules for the three faces the token file names, each file inlined whole as a data: URI."""
+    rules = [FONT_NOTICE]
+    for family, name, weight in FONTS:
+        data = base64.b64encode(open(os.path.join(font_dir, name), "rb").read()).decode("ascii")
+        rules.append(f'@font-face{{font-family:"{family}";src:url(data:font/woff2;base64,{data}) format("woff2");'
+                     f"font-weight:{weight};font-style:normal;font-display:block}}")
+    return "\n".join(rules)
+
+
 def build(biz, template, tokens):
     """The template with the data block replaced and the token file inlined. Nothing else is touched, so the
     page's behaviour is the template's behaviour — that is the point of doing it this way."""
@@ -93,7 +110,8 @@ def build(biz, template, tokens):
                   lambda m: m.group(1) + esc(biz["tagline"]) + m.group(2), page, count=1, flags=re.S)
     link = re.search(r'\s*<link[^>]+href="[^"]*design-tokens\.css"[^>]*>', page)
     if link:
-        page = page[:link.start()] + '\n<style id="design-tokens">\n' + tokens.strip() + '\n</style>' + page[link.end():]
+        page = (page[:link.start()] + '\n<style id="brand-fonts">\n' + font_faces() + '\n</style>'
+                + '\n<style id="design-tokens">\n' + tokens.strip() + '\n</style>' + page[link.end():])
     return page
 
 
@@ -173,6 +191,16 @@ def selftest():
     check("the business in the page is the one given", EXAMPLE["name"] in page and not leaked,
           "words from the template's own business survived: " + ", ".join(leaked[:6]))
     check("the token file is inlined", '<style id="design-tokens">' in page and "--bg:" in page, "")
+    faces = re.findall(r'@font-face\{font-family:"([^"]+)";src:url\(data:font/woff2;base64,([A-Za-z0-9+/=]+)\)', page)
+    # the answer comes from the token file, not from FONTS: a check that reads the list it checks agrees with any
+    # face left out of that list
+    named = [re.search(r'--font-%s:\s*"([^"]+)"' % k, tokens).group(1) for k in ("display", "sans", "mono")]
+    check("the three faces the tokens name travel inside the file",
+          sorted(f for f, _ in faces) == sorted(named), f"{[f for f, _ in faces]} inlined, the tokens name {named}")
+    check("each inlined face is its whole font file",
+          len(faces) == len(FONTS) and all(base64.b64decode(d) == open(os.path.join(FONT_DIR, n), "rb").read()
+                                           for (_, d), (_, n, _) in zip(faces, FONTS)), "")
+    check("the fonts' licence notice travels with them", "SIL Open Font License" in page, "")
     fetches = [u for u in re.findall(r'(?:src|href)="(https?://[^"]+)"', page)]
     check("nothing is left to fetch", 'href="design-tokens.css"' not in page and not fetches, str(fetches))
     check("the behaviour is the template's, byte for byte",

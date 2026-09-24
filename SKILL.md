@@ -5,7 +5,7 @@ license: MIT
 compatibility: standard library only, no packages and no build step; the page it writes has no dependencies and fetches nothing when it opens. probe_check.py needs Google Chrome or Chromium; without one, open the page with ?probe=1 in any browser.
 metadata:
   provenance: own practice (2026-09) — an offline booking-desk template with a staff-approval guard, and a design system built for pages whose numbers can be checked; see Provenance
-  version: 0.1.1
+  version: 0.1.2
 ---
 # Landing page with a booking door
 
@@ -33,7 +33,7 @@ carefully: nothing leaves it until a person approves the exact words that are ab
    the reserved 555-01xx range and any e-mail that is not at an example domain. A demo of a business that does
    not exist should not be able to ring a real telephone.
 3. **Write the page**: `python3 ${CLAUDE_SKILL_DIR}/scripts/make_page.py business.json --out page.html`.
-   One file: the token file is inlined, nothing is fetched when it opens, and the behaviour comes from
+   One file: the token file and its three fonts are inlined, nothing is fetched when it opens, and the behaviour comes from
    `assets/starter.html` unchanged — the script fills in content and never writes behaviour.
 4. **Read the five invariants** in `references/invariants.md` before you change the template. They are what
    makes the booking door worth having: nothing leaves without an approval; an approval names the revision and
