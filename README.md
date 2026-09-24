@@ -1,5 +1,7 @@
 # nk-landing
 
+![nk-landing](https://raw.githubusercontent.com/NickkkLian/nickkk-skills/main/gallery/social/nk-landing.png)
+
 An agent skill for [Claude Code](https://code.claude.com) and [OpenAI Codex](https://developers.openai.com/codex). Turn a written description of a small business — hours, services, price ranges, the questions customers actually ask — into one self-contained HTML page with a booking door, where every confirmation and every calendar write waits for a member of staff to approve that exact draft.
 
 Part of [nickkk-skills](https://github.com/NickkkLian/nickkk-skills) — agent skills whose scripts were broken on purpose
